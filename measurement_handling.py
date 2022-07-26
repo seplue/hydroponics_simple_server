@@ -6,7 +6,7 @@ measurement_example = {
     'time_utc': 0,
     'temperature': 23.1,
     'humidity': 60.0,
-    'light': 0.7,
+    'light_intensity': 0.7,
 }
 
 
