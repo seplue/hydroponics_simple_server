@@ -11,40 +11,6 @@ logging.basicConfig(level=logging.DEBUG)
 a = app.logger
 
 
-class Measurement(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    temperature = db.Column(db.DECIMAL)
-    humidity = db.Column(db.DECIMAL)
-    pressure = db.Column(db.DECIMAL)
-
-    def __repr__(self):
-        return f"{self.id}, {self.date_posted}, {self.temperature},{self.humidity}, {self.pressure}"
-
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
-    password = db.Column(db.String(60), nullable=False)
-    posts = db.relationship('Post', backref='author', lazy=True)
-
-    def __repr__(self):
-        return f"User('{self.username}', '{self.email}', '{self.image_file}')"
-
-
-class Post(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
-    def __repr__(self):
-        return f"Post('{self.title}', '{self.date_posted}')"
-
-
 @app.route('/')
 def hello_world():  # put application's code here
     a.info('info')
@@ -58,32 +24,24 @@ def test_put():
     content = request.json
     a.debug(content)
     a.debug(type(content))
-    measurement_handling.add_measurement(content)
     return "fine"
 
 
-@app.route('/measurement', methods=['PUT', 'POST'])
+@app.route('/measurement', methods=['POST'])
 def measurement():
-    a.debug('measurement')
-    content = request.get_json(silent=True)
+    a.debug('accessing route /measurement')
+    content = request.json
     a.debug(type(content))
     a.debug(content)
-    return content
+    my_measurement = Measurement(temperature=content['temperature'],
+                                 humidity=content['humidity'],
+                                 light_intensity=content['light_intensity'])
 
-
-@app.route('/query-example')
-def query_example():
-    return 'Query String Example'
-
-
-@app.route('/form-example')
-def form_example():
-    return 'Form Data Example'
-
-
-@app.route('/json-example')
-def json_example():
-    return 'JSON Object Example'
+    a.debug(repr(my_measurement))
+    db.session.add(my_measurement)
+    db.session.commit()
+    a.debug(repr(my_measurement))
+    return jsonify(content)
 
 
 @app.route('/login', methods=['POST', 'GET'])
@@ -98,6 +56,25 @@ def login():
 @app.route('/<usr>')
 def user(usr):
     return f'<h1>{usr}</h1>'
+
+
+@app.route('/db_exp')
+def db_exp():
+    my_measurement = Measurement(temperature=1, humidity=2, pressure=3)
+    db.session.add(my_measurement)
+    db.session.commit()
+    return repr(my_measurement)
+
+
+class Measurement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    temperature = db.Column(db.DECIMAL)
+    humidity = db.Column(db.DECIMAL)
+    light_intensity = db.Column(db.DECIMAL)
+
+    def __repr__(self):
+        return f"{self.id}, {self.date_posted}, {self.temperature},{self.humidity}, {self.light_intensity}"
 
 
 if __name__ == '__main__':
