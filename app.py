@@ -6,6 +6,7 @@ import logging
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # disables SQLAlchemy's event system
 db = SQLAlchemy(app)
 logging.basicConfig(level=logging.DEBUG)
 a = app.logger
