@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # disables SQLAlchemy's event system
 db = SQLAlchemy(app)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 a = app.logger
 
 
@@ -20,7 +20,7 @@ def hello_world():  # put application's code here
 
 @app.route('/test_put', methods=['PUT', 'POST'])
 def test_put():
-    a.debug('function called: test_put')
+    a.info('accessing route /test_put')
     a.debug(request)
     content = request.json
     a.debug(content)
@@ -30,41 +30,38 @@ def test_put():
 
 @app.route('/measurement', methods=['POST'])
 def measurement():
-    a.debug('accessing route /measurement')
+    a.info('accessing route /measurement')
     content = request.json
-    a.debug(type(content))
-    a.debug(content)
-    my_measurement = Measurement(temperature=content['temperature'],
+    a.debug(f"type of content: {type(content)}")
+    a.debug(f"content: {content}")
+    # we have to check if the time_utc has been set
+    a.debug(f"type of time_utc: {type(content['time_utc'])}")
+    """my_measurement = Measurement(temperature=content['temperature'],
                                  humidity=content['humidity'],
-                                 light_intensity=content['light_intensity'])
+                                 light_intensity=content['light_intensity'])"""
+    my_measurement = Measurement()
+    for key, value in content.items():
+        try:
+            setattr(my_measurement, key, value)
+        except Exception as e:
+            a.warning(e)
 
-    a.debug(repr(my_measurement))
-    db.session.add(my_measurement)
-    db.session.commit()
-    a.debug(repr(my_measurement))
+    a.debug(f"before adding to db.session: {repr(my_measurement)}")
+    try:
+        db.session.add(my_measurement)
+        db.session.commit()
+    except Exception as e:
+        a.warning(e)
+    a.info(f"The following entry was added to db:\n {repr(my_measurement)}")
     return jsonify(content)
 
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
-    if request.method == 'POST':
-        user = request.form['nm']
-        return redirect(url_for('user', usr=user))
-    else:
-        return render_template('login.html')
-
-
-@app.route('/<usr>')
-def user(usr):
-    return f'<h1>{usr}</h1>'
-
-
-@app.route('/db_exp')
-def db_exp():
-    my_measurement = Measurement(temperature=1, humidity=2, pressure=3)
-    db.session.add(my_measurement)
-    db.session.commit()
-    return repr(my_measurement)
+@app.route('/last_measurement')
+def last_measurement():
+    a.info('accessing route /last_measurement')
+    my_last_measurement = Measurement.query.order_by(Measurement.id.desc()).first()
+    a.debug(f"{str(my_last_measurement)}")
+    return str(my_last_measurement)
 
 
 class Measurement(db.Model):
@@ -73,9 +70,23 @@ class Measurement(db.Model):
     temperature = db.Column(db.DECIMAL)
     humidity = db.Column(db.DECIMAL)
     light_intensity = db.Column(db.DECIMAL)
+    pressure = db.Column(db.DECIMAL)
 
     def __repr__(self):
-        return f"{self.id}, {self.date_posted}, {self.temperature},{self.humidity}, {self.light_intensity}"
+        return f"{self.id}, " \
+               f"{self.date_posted}, " \
+               f"{self.temperature}, " \
+               f"{self.humidity}, " \
+               f"{self.light_intensity}, " \
+               f"{self.pressure}"
+
+    def __str__(self):
+        return f"ID: {self.id}, \n" \
+               f"Date: {self.date_posted}, \n" \
+               f"Temperature: {self.temperature}, \n" \
+               f"Humidity: {self.humidity}, \n" \
+               f"Light intensity: {self.light_intensity}, \n" \
+               f"Pressure: {self.pressure}"
 
 
 if __name__ == '__main__':
